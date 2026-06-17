@@ -1,6 +1,6 @@
 import { clearAccessToken, getAccessToken, hasAccessToken, hasSavedSession, initAuth, isConfigured, requestAccessToken } from "./auth.js";
 import { startSettingsSync, stopSettingsSync } from "./drive-sync.js";
-import { addCategory, assignChannelToCategory, deleteCategory, getState, hideVideo, pruneHiddenVideos, selectCategory, setIncludeShorts, syncChannels } from "./store.js";
+import { addCategory, assignChannelToCategory, deleteCategory, getState, hideVideo, pruneHiddenVideos, resetUserData, selectCategory, setIncludeShorts, syncChannels } from "./store.js";
 import { fetchRecentVideos, fetchSubscriptions, getRecentDays, isShortsCandidate } from "./youtube-api.js";
 import { closePlayer, openPlayer, renderCategories, renderChannelManager, renderVideos } from "./ui.js";
 
@@ -14,6 +14,7 @@ const elements = {
     categoryForm: document.querySelector("#category-form"),
     categoryName: document.querySelector("#category-name"),
     categoryList: document.querySelector("#category-list"),
+    resetDataButton: document.querySelector("#reset-data-button"),
     channelManager: document.querySelector("#channel-manager"),
     channelCount: document.querySelector("#channel-count"),
     uncategorizedCount: document.querySelector("#uncategorized-count"),
@@ -109,6 +110,18 @@ function bindEvents() {
         event.preventDefault();
         addCategory(elements.categoryName.value);
         elements.categoryName.value = "";
+        render();
+    });
+
+    elements.resetDataButton.addEventListener("click", () => {
+        const confirmed = confirm("모든 카테고리, 채널 분류, 제외한 영상 기록을 삭제할까요?");
+        if (!confirmed) {
+            return;
+        }
+
+        videos = [];
+        elements.videoSearch.value = "";
+        resetUserData();
         render();
     });
 

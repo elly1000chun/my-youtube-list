@@ -145,6 +145,28 @@ h2 {
     border-color: var(--focus);
 }
 
+.data-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 14px;
+}
+
+.danger-button {
+    min-height: 32px;
+    border: 1px solid rgba(217, 45, 32, 0.28);
+    border-radius: 8px;
+    padding: 0 10px;
+    background: #fff;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.danger-button:hover {
+    border-color: var(--accent);
+    background: rgba(217, 45, 32, 0.06);
+}
+
 .workspace {
     display: grid;
     grid-template-columns: 360px minmax(0, 1fr);

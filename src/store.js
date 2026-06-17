@@ -4,6 +4,7 @@ const STORAGE_KEY = "my-youtube-list:v2";
 const LEGACY_STORAGE_KEY = "my-youtube-list:v1";
 const UNCATEGORIZED_ID = "uncategorized";
 const DEFAULT_HIDDEN_VIDEO_RETENTION_DAYS = 3;
+const DEFAULT_CATEGORY_NAMES = ["LOL", "Music"];
 
 const initialState = {
     categories: [],
@@ -25,6 +26,7 @@ const initialState = {
 
 let state = loadState();
 const listeners = new Set();
+saveState();
 
 function loadState() {
     try {
@@ -46,7 +48,7 @@ function normalizeState(rawState) {
         recentDays: DEFAULT_HIDDEN_VIDEO_RETENTION_DAYS,
     });
 
-    return {
+    const normalized = {
         ...initialState,
         ...parsed,
         categories: Array.isArray(parsed.categories)
@@ -72,6 +74,9 @@ function normalizeState(rawState) {
             ...(parsed.sync || {}),
         },
     };
+
+    ensureDefaultCategories(normalized);
+    return normalized;
 }
 
 function saveState({ notifySync = false } = {}) {
@@ -103,6 +108,24 @@ function normalizeDate(value, fallback) {
 
 function tombstoneKey(category) {
     return String(category.normalizedName || category.name || "").trim().toLocaleLowerCase("ko-KR");
+}
+
+function createCategory(name, now = timestamp()) {
+    return {
+        id: crypto.randomUUID(),
+        name,
+        createdAt: now,
+        updatedAt: now,
+    };
+}
+
+function ensureDefaultCategories(nextState) {
+    if (nextState.categories.length > 0) {
+        return;
+    }
+
+    const now = timestamp();
+    nextState.categories = DEFAULT_CATEGORY_NAMES.map((name) => createCategory(name, now));
 }
 
 export function getState() {
@@ -159,13 +182,14 @@ export function addCategory(name) {
         return state;
     }
 
-    const now = timestamp();
-    state.categories.push({
-        id: crypto.randomUUID(),
-        name: trimmedName,
-        createdAt: now,
-        updatedAt: now,
-    });
+    state.categories.push(createCategory(trimmedName));
+    markPendingChange();
+    saveState({ notifySync: true });
+    return getState();
+}
+
+export function resetUserData() {
+    state = normalizeState(initialState);
     markPendingChange();
     saveState({ notifySync: true });
     return getState();
