@@ -1,6 +1,9 @@
 const API_BASE_URL = "https://www.googleapis.com/youtube/v3";
 const RECENT_DAYS = 3;
 const SHORTS_MAX_SECONDS = 180;
+const UPLOADS_PLAYLIST_MAX_RESULTS = 5;
+const CHANNEL_BATCH_SIZE = 50;
+const VIDEO_BATCH_SIZE = 50;
 
 export function getRecentDays() {
     return RECENT_DAYS;
@@ -103,11 +106,12 @@ export async function fetchSubscriptions(accessToken) {
 }
 
 export async function fetchRecentVideos(accessToken, channels) {
-    const publishedAfter = new Date(Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000).toISOString();
-    const searchResults = await runWithConcurrency(channels, 6, (channel) =>
-        searchChannelVideos(accessToken, channel.id, publishedAfter)
+    const publishedAfterTime = Date.now() - RECENT_DAYS * 24 * 60 * 60 * 1000;
+    const uploadPlaylists = await fetchUploadPlaylists(accessToken, channels);
+    const playlistResults = await runWithConcurrency(uploadPlaylists, 6, (playlist) =>
+        fetchPlaylistVideoIds(accessToken, playlist.playlistId)
     );
-    const videoIds = [...new Set(searchResults.flat().map((item) => item.id?.videoId).filter(Boolean))];
+    const videoIds = [...new Set(playlistResults.flat().filter(Boolean))];
 
     if (videoIds.length === 0) {
         return [];
@@ -116,28 +120,49 @@ export async function fetchRecentVideos(accessToken, channels) {
     const details = await fetchVideoDetails(accessToken, videoIds);
     return details
         .map(normalizeVideo)
+        .filter((video) => new Date(video.publishedAt).getTime() >= publishedAfterTime)
         .filter((video) => video.durationSeconds > SHORTS_MAX_SECONDS)
         .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 }
 
-async function searchChannelVideos(accessToken, channelId, publishedAfter) {
-    const data = await youtubeFetch("search", accessToken, {
-        part: "snippet",
-        channelId,
-        maxResults: "10",
-        order: "date",
-        publishedAfter,
-        type: "video",
-    });
+async function fetchUploadPlaylists(accessToken, channels) {
+    const channelIds = [...new Set(channels.map((channel) => channel.id).filter(Boolean))];
+    const chunks = chunkArray(channelIds, CHANNEL_BATCH_SIZE);
+    const responses = await runWithConcurrency(chunks, 4, (chunk) =>
+        youtubeFetch("channels", accessToken, {
+            part: "contentDetails",
+            id: chunk.join(","),
+            maxResults: "50",
+        })
+    );
 
-    return data.items || [];
+    return responses
+        .flatMap((response) => response.items || [])
+        .map((channel) => ({
+            channelId: channel.id,
+            playlistId: channel.contentDetails?.relatedPlaylists?.uploads || "",
+        }))
+        .filter((playlist) => Boolean(playlist.channelId && playlist.playlistId));
+}
+
+async function fetchPlaylistVideoIds(accessToken, playlistId) {
+    try {
+        const data = await youtubeFetch("playlistItems", accessToken, {
+            part: "snippet,contentDetails",
+            playlistId,
+            maxResults: String(UPLOADS_PLAYLIST_MAX_RESULTS),
+        });
+
+        return (data.items || [])
+            .map((item) => item.contentDetails?.videoId || item.snippet?.resourceId?.videoId)
+            .filter(Boolean);
+    } catch {
+        return [];
+    }
 }
 
 async function fetchVideoDetails(accessToken, videoIds) {
-    const chunks = [];
-    for (let index = 0; index < videoIds.length; index += 50) {
-        chunks.push(videoIds.slice(index, index + 50));
-    }
+    const chunks = chunkArray(videoIds, VIDEO_BATCH_SIZE);
 
     const responses = await runWithConcurrency(chunks, 4, (chunk) =>
         youtubeFetch("videos", accessToken, {
@@ -148,6 +173,15 @@ async function fetchVideoDetails(accessToken, videoIds) {
     );
 
     return responses.flatMap((response) => response.items || []);
+}
+
+function chunkArray(items, size) {
+    const chunks = [];
+    for (let index = 0; index < items.length; index += size) {
+        chunks.push(items.slice(index, index + size));
+    }
+
+    return chunks;
 }
 
 function normalizeVideo(video) {
