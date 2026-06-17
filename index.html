@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>My YouTube List</title>
+        <link rel="stylesheet" href="./styles.css">
+        <script src="https://accounts.google.com/gsi/client" async defer></script>
+        <script src="./config.js"></script>
+        <script type="module" src="./src/app.js"></script>
+    </head>
+    <body>
+        <div class="app-shell">
+            <header class="topbar">
+                <div>
+                    <p class="eyebrow">Subscriptions first</p>
+                    <h1>My YouTube List</h1>
+                </div>
+                <div class="topbar-actions">
+                    <button id="refresh-button" class="secondary-button" type="button" disabled>새로고침</button>
+                    <button id="login-button" class="primary-button" type="button">Google 로그인</button>
+                    <button id="logout-button" class="secondary-button hidden" type="button">로그아웃</button>
+                </div>
+            </header>
+
+            <main class="workspace">
+                <aside class="sidebar" aria-label="카테고리와 채널 관리">
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2>카테고리</h2>
+                            <span id="channel-count" class="muted">0개 채널</span>
+                        </div>
+                        <form id="category-form" class="inline-form">
+                            <input id="category-name" type="text" maxlength="32" placeholder="새 카테고리" autocomplete="off">
+                            <button type="submit">추가</button>
+                        </form>
+                        <div id="category-list" class="category-list"></div>
+                    </section>
+
+                    <section class="panel channel-panel">
+                        <div class="panel-header">
+                            <h2>채널 분류</h2>
+                            <span id="uncategorized-count" class="muted">미분류 0개</span>
+                        </div>
+                        <div id="channel-manager" class="channel-manager"></div>
+                    </section>
+                </aside>
+
+                <section class="content" aria-label="최신 영상 목록">
+                    <div class="content-toolbar">
+                        <div>
+                            <h2 id="current-filter-title">전체 최신 영상</h2>
+                            <p id="status-text" class="muted">로그인하면 구독 채널의 최근 3일 영상을 불러옵니다.</p>
+                        </div>
+                        <label class="search-box">
+                            <span>검색</span>
+                            <input id="video-search" type="search" placeholder="영상 또는 채널명" autocomplete="off">
+                        </label>
+                    </div>
+
+                    <div id="empty-state" class="empty-state">
+                        <strong>아직 불러온 영상이 없습니다.</strong>
+                        <span>Google 로그인 후 구독 채널의 최신 업로드를 확인하세요.</span>
+                    </div>
+
+                    <div id="video-list" class="video-list"></div>
+                </section>
+            </main>
+        </div>
+
+        <dialog id="player-dialog" class="player-dialog">
+            <div class="dialog-header">
+                <strong id="player-title">영상 재생</strong>
+                <button id="close-player" class="icon-button" type="button" aria-label="닫기">x</button>
+            </div>
+            <div id="player-frame" class="player-frame"></div>
+        </dialog>
+    </body>
+</html>
