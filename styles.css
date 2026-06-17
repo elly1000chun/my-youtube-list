@@ -79,6 +79,18 @@ h1 {
     font-size: 26px;
 }
 
+.brand-title {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.app-version {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
 h2 {
     margin-bottom: 0;
     font-size: 18px;

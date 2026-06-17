@@ -10,6 +10,7 @@ const elements = {
     refreshButton: document.querySelector("#refresh-button"),
     statusText: document.querySelector("#status-text"),
     syncStatus: document.querySelector("#sync-status"),
+    appVersion: document.querySelector("#app-version"),
     categoryForm: document.querySelector("#category-form"),
     categoryName: document.querySelector("#category-name"),
     categoryList: document.querySelector("#category-list"),
@@ -35,6 +36,7 @@ window.addEventListener("load", () => {
 
 function init() {
     bindEvents();
+    loadAppVersion();
     render();
 
     if (!isConfigured()) {
@@ -55,6 +57,24 @@ function init() {
         },
         onError: (error) => setStatus(error.message),
     });
+}
+
+async function loadAppVersion() {
+    if (!elements.appVersion) {
+        return;
+    }
+
+    try {
+        const response = await fetch("./version.json", { cache: "no-store" });
+        if (!response.ok) {
+            throw new Error(`${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        elements.appVersion.textContent = data.version ? `v${data.version}` : "";
+    } catch {
+        elements.appVersion.textContent = "";
+    }
 }
 
 function bindEvents() {
