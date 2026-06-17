@@ -3,6 +3,7 @@
   "version": "0.0.2",
   "type": "module",
   "scripts": {
+    "build": "node scripts/build-static.mjs",
     "generate:version": "node scripts/generate-version.mjs",
     "test": "node --test"
   },
