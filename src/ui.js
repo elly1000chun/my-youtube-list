@@ -56,8 +56,19 @@ export function renderChannelManager({ container, state, onAssign }) {
         ...state.categories,
     ];
 
+    const sortedChannels = [...state.channels].sort((a, b) => {
+        const aIsUncategorized = !state.channelCategoryMap[a.id];
+        const bIsUncategorized = !state.channelCategoryMap[b.id];
+
+        if (aIsUncategorized !== bIsUncategorized) {
+            return aIsUncategorized ? -1 : 1;
+        }
+
+        return a.title.localeCompare(b.title, "ko-KR");
+    });
+
     container.replaceChildren(
-        ...state.channels.map((channel) => {
+        ...sortedChannels.map((channel) => {
             const row = document.createElement("div");
             row.className = "channel-row";
 

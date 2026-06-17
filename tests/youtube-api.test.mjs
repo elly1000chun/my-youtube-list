@@ -74,7 +74,7 @@ test("fetchRecentVideos uses uploads playlists instead of search.list", async ()
 
         assert.deepEqual(
             videos.map((video) => video.id),
-            ["recent-long", "recent-duplicate"]
+            ["recent-long", "recent-short", "recent-duplicate"]
         );
 
         const channelCalls = calls.filter((call) => call.path === "channels");

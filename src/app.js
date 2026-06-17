@@ -1,7 +1,7 @@
-import { clearAccessToken, getAccessToken, hasAccessToken, initAuth, isConfigured, requestAccessToken } from "./auth.js";
+import { clearAccessToken, getAccessToken, hasAccessToken, hasSavedSession, initAuth, isConfigured, requestAccessToken } from "./auth.js";
 import { startSettingsSync, stopSettingsSync } from "./drive-sync.js";
-import { addCategory, assignChannelToCategory, deleteCategory, getState, hideVideo, pruneHiddenVideos, selectCategory, syncChannels } from "./store.js";
-import { fetchRecentVideos, fetchSubscriptions, getRecentDays } from "./youtube-api.js";
+import { addCategory, assignChannelToCategory, deleteCategory, getState, hideVideo, pruneHiddenVideos, selectCategory, setIncludeShorts, syncChannels } from "./store.js";
+import { fetchRecentVideos, fetchSubscriptions, getRecentDays, isShortsCandidate } from "./youtube-api.js";
 import { closePlayer, openPlayer, renderCategories, renderChannelManager, renderVideos } from "./ui.js";
 
 const elements = {
@@ -18,6 +18,7 @@ const elements = {
     channelCount: document.querySelector("#channel-count"),
     uncategorizedCount: document.querySelector("#uncategorized-count"),
     currentFilterTitle: document.querySelector("#current-filter-title"),
+    includeShorts: document.querySelector("#include-shorts"),
     videoSearch: document.querySelector("#video-search"),
     videoList: document.querySelector("#video-list"),
     emptyState: document.querySelector("#empty-state"),
@@ -57,6 +58,10 @@ function init() {
         },
         onError: (error) => setStatus(error.message),
     });
+
+    if (hasSavedSession()) {
+        requestAccessToken({ prompt: "", silent: true });
+    }
 }
 
 async function loadAppVersion() {
@@ -111,6 +116,11 @@ function bindEvents() {
         render();
     });
 
+    elements.includeShorts.addEventListener("change", () => {
+        setIncludeShorts(elements.includeShorts.checked);
+        render();
+    });
+
     elements.closePlayer.addEventListener("click", () => {
         closePlayer({
             dialog: elements.playerDialog,
@@ -140,7 +150,7 @@ async function loadDashboard() {
 
         setStatus(`최근 ${getRecentDays()}일 동안 업로드된 영상을 불러오고 있습니다.`);
         videos = await fetchRecentVideos(getAccessToken(), channels);
-        setStatus(`${channels.length}개 채널에서 ${videos.length}개 영상을 찾았습니다. Shorts 후보는 제외했습니다.`);
+        setStatus(`${channels.length}개 채널에서 ${videos.length}개 영상을 찾았습니다.`);
     } catch (error) {
         if (/401|unauthorized|invalid credentials/i.test(error.message)) {
             clearAccessToken();
@@ -164,6 +174,7 @@ function render() {
     const selectedCategory = getSelectedCategory(state);
     const uncategorizedChannelCount = state.channels.filter((channel) => !state.channelCategoryMap[channel.id]).length;
 
+    elements.includeShorts.checked = state.includeShorts;
     elements.channelCount.textContent = `${state.channels.length}개 채널`;
     elements.uncategorizedCount.textContent = `미분류 ${uncategorizedChannelCount}개`;
     elements.currentFilterTitle.textContent = selectedCategory.name === "전체" ? "전체 최신 영상" : `${selectedCategory.name} 최신 영상`;
@@ -222,6 +233,10 @@ function getVisibleVideos(state) {
             return false;
         }
 
+        if (!state.includeShorts && isShortsCandidate(video)) {
+            return false;
+        }
+
         if (!query) {
             return true;
         }
@@ -242,6 +257,10 @@ function getVideoCounts(state) {
 
     for (const video of videos) {
         if (state.hiddenVideoIds.includes(video.id)) {
+            continue;
+        }
+
+        if (!state.includeShorts && isShortsCandidate(video)) {
             continue;
         }
 
