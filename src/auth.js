@@ -1,4 +1,7 @@
-const YOUTUBE_READONLY_SCOPE = "https://www.googleapis.com/auth/youtube.readonly";
+const SCOPES = [
+    "https://www.googleapis.com/auth/youtube.readonly",
+    "https://www.googleapis.com/auth/drive.appdata",
+].join(" ");
 
 let tokenClient = null;
 let accessToken = "";
@@ -32,7 +35,7 @@ export function initAuth({ onToken, onError }) {
 
     tokenClient = window.google.accounts.oauth2.initTokenClient({
         client_id: window.APP_CONFIG.googleClientId,
-        scope: YOUTUBE_READONLY_SCOPE,
+        scope: SCOPES,
         callback: (response) => {
             if (response?.error) {
                 onError?.(new Error(response.error));
