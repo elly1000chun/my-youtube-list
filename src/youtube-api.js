@@ -9,6 +9,10 @@ export function getRecentDays() {
     return RECENT_DAYS;
 }
 
+export function isShortsCandidate(video) {
+    return Number(video?.durationSeconds || 0) <= SHORTS_MAX_SECONDS;
+}
+
 export function parseIsoDuration(duration) {
     const match = duration.match(/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/);
     if (!match) {
@@ -121,7 +125,6 @@ export async function fetchRecentVideos(accessToken, channels) {
     return details
         .map(normalizeVideo)
         .filter((video) => new Date(video.publishedAt).getTime() >= publishedAfterTime)
-        .filter((video) => video.durationSeconds > SHORTS_MAX_SECONDS)
         .sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
 }
 

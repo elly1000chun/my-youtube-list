@@ -14,6 +14,7 @@ const initialState = {
     hiddenVideos: {},
     channels: [],
     selectedCategoryId: "all",
+    includeShorts: true,
     sync: {
         status: "pending",
         lastSyncedAt: "",
@@ -65,6 +66,7 @@ function normalizeState(rawState) {
         hiddenVideos: hidden.hiddenVideos,
         channels: Array.isArray(parsed.channels) ? parsed.channels : [],
         selectedCategoryId: parsed.selectedCategoryId || "all",
+        includeShorts: typeof parsed.includeShorts === "boolean" ? parsed.includeShorts : true,
         sync: {
             ...initialState.sync,
             ...(parsed.sync || {}),
@@ -205,6 +207,12 @@ export function deleteCategory(categoryId) {
 
 export function selectCategory(categoryId) {
     state.selectedCategoryId = categoryId;
+    saveState();
+    return getState();
+}
+
+export function setIncludeShorts(includeShorts) {
+    state.includeShorts = Boolean(includeShorts);
     saveState();
     return getState();
 }

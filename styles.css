@@ -322,9 +322,33 @@ h2 {
     margin-bottom: 6px;
 }
 
+.toolbar-controls {
+    display: grid;
+    gap: 10px;
+    justify-items: end;
+    min-width: min(280px, 100%);
+}
+
+.toggle-field {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.toggle-field input {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+}
+
 .search-box {
     display: grid;
     gap: 6px;
+    width: 100%;
     min-width: min(280px, 100%);
     color: var(--muted);
     font-size: 13px;

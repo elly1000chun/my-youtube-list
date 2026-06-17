@@ -1,13 +1,12 @@
 # My YouTube List
-
 구독 채널의 최신 영상을 먼저 확인하기 위한 최소 스택 웹앱입니다.
+Demo: https://my-youtube-list.elly1000chun.workers.dev
 
 ## MVP 기능
-
 - Google OAuth 로그인
 - YouTube 구독 채널 동기화
 - 구독 채널별 최근 3일 영상 조회
-- 3분 이하 Shorts 후보 제외
+- Shorts 후보 포함 여부 선택
 - 최신순 영상 목록 표시
 - 영상 재생, YouTube에서 열기, 목록 제외
 - 카테고리 생성/삭제
@@ -45,5 +44,5 @@ python -m http.server 8080 --bind 127.0.0.1
 - 인증은 Google Identity Services token model을 사용합니다.
 - API 호출은 브라우저에서 YouTube Data API v3와 Google Drive API REST 엔드포인트로 직접 보냅니다.
 - 최근 영상 조회는 `search.list` 대신 채널의 uploads playlist를 `playlistItems.list`로 읽어 search quota를 사용하지 않습니다.
-- Shorts 여부를 알려주는 명확한 API 필드가 없어 MVP에서는 `contentDetails.duration`이 3분 이하인 영상을 제외합니다.
+- Shorts 여부를 알려주는 명확한 API 필드가 없어 `contentDetails.duration`이 3분 이하인 영상을 Shorts 후보로 보고, UI 설정에 따라 표시 여부를 결정합니다.
 - 사용자 카테고리, 채널 매핑, 제외한 영상은 먼저 브라우저 `localStorage`에 저장하고, 로그인한 Google 계정의 Drive `appDataFolder`에 동기화합니다.

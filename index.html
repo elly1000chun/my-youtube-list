@@ -56,10 +56,16 @@
                             <p id="status-text" class="muted">로그인하면 구독 채널의 최근 3일 영상을 불러옵니다.</p>
                             <span id="sync-status" class="sync-status" aria-live="polite"></span>
                         </div>
-                        <label class="search-box">
-                            <span>검색</span>
-                            <input id="video-search" type="search" placeholder="영상 또는 채널명" autocomplete="off">
-                        </label>
+                        <div class="toolbar-controls">
+                            <label class="toggle-field">
+                                <input id="include-shorts" type="checkbox" checked>
+                                <span>쇼츠 포함</span>
+                            </label>
+                            <label class="search-box">
+                                <span>검색</span>
+                                <input id="video-search" type="search" placeholder="영상 또는 채널명" autocomplete="off">
+                            </label>
+                        </div>
                     </div>
 
                     <div id="empty-state" class="empty-state">
