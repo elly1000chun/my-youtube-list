@@ -1,6 +1,6 @@
 {
   "name": "my-youtube-list",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "scripts": {
     "generate:version": "node scripts/generate-version.mjs",
