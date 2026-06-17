@@ -1,5 +1,6 @@
 import { clearAccessToken, getAccessToken, hasAccessToken, initAuth, isConfigured, requestAccessToken } from "./auth.js";
-import { addCategory, assignChannelToCategory, deleteCategory, getState, hideVideo, selectCategory, syncChannels } from "./store.js";
+import { startSettingsSync, stopSettingsSync } from "./drive-sync.js";
+import { addCategory, assignChannelToCategory, deleteCategory, getState, hideVideo, pruneHiddenVideos, selectCategory, syncChannels } from "./store.js";
 import { fetchRecentVideos, fetchSubscriptions, getRecentDays } from "./youtube-api.js";
 import { closePlayer, openPlayer, renderCategories, renderChannelManager, renderVideos } from "./ui.js";
 
@@ -8,6 +9,8 @@ const elements = {
     logoutButton: document.querySelector("#logout-button"),
     refreshButton: document.querySelector("#refresh-button"),
     statusText: document.querySelector("#status-text"),
+    syncStatus: document.querySelector("#sync-status"),
+    appVersion: document.querySelector("#app-version"),
     categoryForm: document.querySelector("#category-form"),
     categoryName: document.querySelector("#category-name"),
     categoryList: document.querySelector("#category-list"),
@@ -33,6 +36,7 @@ window.addEventListener("load", () => {
 
 function init() {
     bindEvents();
+    loadAppVersion();
     render();
 
     if (!isConfigured()) {
@@ -43,10 +47,34 @@ function init() {
     initAuth({
         onToken: () => {
             setSignedIn(true);
+            startSettingsSync({
+                accessToken: getAccessToken(),
+                recentDays: getRecentDays(),
+                onStatus: setSyncStatusText,
+                onStateChanged: render,
+            });
             loadDashboard();
         },
         onError: (error) => setStatus(error.message),
     });
+}
+
+async function loadAppVersion() {
+    if (!elements.appVersion) {
+        return;
+    }
+
+    try {
+        const response = await fetch("./version.json", { cache: "no-store" });
+        if (!response.ok) {
+            throw new Error(`${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        elements.appVersion.textContent = data.version ? `v${data.version}` : "";
+    } catch {
+        elements.appVersion.textContent = "";
+    }
 }
 
 function bindEvents() {
@@ -59,9 +87,11 @@ function bindEvents() {
     });
 
     elements.logoutButton.addEventListener("click", () => {
+        stopSettingsSync();
         clearAccessToken();
         videos = [];
         setSignedIn(false);
+        setSyncStatusText("");
         setStatus("로그아웃했습니다.");
         render();
     });
@@ -100,6 +130,7 @@ async function loadDashboard() {
 
     isLoading = true;
     setLoading(true);
+    pruneHiddenVideos(getRecentDays());
 
     try {
         setStatus("구독 채널을 동기화하고 있습니다.");
@@ -127,6 +158,7 @@ async function loadDashboard() {
 
 function render() {
     const state = getState();
+    setSyncStatusText(hasAccessToken() ? state.sync.status : "", state.sync.lastError);
     const filteredVideos = getVisibleVideos(state);
     const videoCounts = getVideoCounts(state);
     const selectedCategory = getSelectedCategory(state);
@@ -244,6 +276,23 @@ function isVideoInSelectedCategory(video, state) {
 
 function setStatus(message) {
     elements.statusText.textContent = message;
+}
+
+function setSyncStatusText(status, errorMessage = "") {
+    if (!elements.syncStatus) {
+        return;
+    }
+
+    const labels = {
+        pending: "저장 대기",
+        syncing: "저장 중",
+        synced: "저장됨",
+        failed: "동기화 실패",
+    };
+
+    elements.syncStatus.textContent = labels[status] || "";
+    elements.syncStatus.title = errorMessage || "";
+    elements.syncStatus.dataset.status = status || "";
 }
 
 function setLoading(nextIsLoading) {

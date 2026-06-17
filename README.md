@@ -19,7 +19,7 @@
 1. Google Cloud Console에서 OAuth 2.0 Client ID를 생성합니다.
 2. 승인된 JavaScript origin에 로컬 개발 주소를 추가합니다.
    - 예: `http://localhost:8080`
-3. YouTube Data API v3를 활성화합니다.
+3. YouTube Data API v3와 Google Drive API를 활성화합니다.
 4. `config.example.js`를 `config.js`로 복사한 뒤 Client ID를 입력합니다.
 
 ```js
@@ -43,6 +43,6 @@ python -m http.server 8080 --bind 127.0.0.1
 ## 구현 메모
 
 - 인증은 Google Identity Services token model을 사용합니다.
-- API 호출은 브라우저에서 YouTube Data API v3 REST 엔드포인트로 직접 보냅니다.
+- API 호출은 브라우저에서 YouTube Data API v3와 Google Drive API REST 엔드포인트로 직접 보냅니다.
 - Shorts 여부를 알려주는 명확한 API 필드가 없어 MVP에서는 `contentDetails.duration`이 3분 이하인 영상을 제외합니다.
-- 사용자 카테고리, 채널 매핑, 제외한 영상은 브라우저 `localStorage`에 저장합니다.
+- 사용자 카테고리, 채널 매핑, 제외한 영상은 먼저 브라우저 `localStorage`에 저장하고, 로그인한 Google 계정의 Drive `appDataFolder`에 동기화합니다.

@@ -14,7 +14,10 @@
             <header class="topbar">
                 <div>
                     <p class="eyebrow">Subscriptions first</p>
-                    <h1>My YouTube List</h1>
+                    <div class="brand-title">
+                        <h1>My YouTube List</h1>
+                        <span id="app-version" class="app-version" aria-label="앱 버전"></span>
+                    </div>
                 </div>
                 <div class="topbar-actions">
                     <button id="refresh-button" class="secondary-button" type="button" disabled>새로고침</button>
@@ -51,6 +54,7 @@
                         <div>
                             <h2 id="current-filter-title">전체 최신 영상</h2>
                             <p id="status-text" class="muted">로그인하면 구독 채널의 최근 3일 영상을 불러옵니다.</p>
+                            <span id="sync-status" class="sync-status" aria-live="polite"></span>
                         </div>
                         <label class="search-box">
                             <span>검색</span>

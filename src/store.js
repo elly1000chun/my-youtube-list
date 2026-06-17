@@ -1,39 +1,106 @@
-const STORAGE_KEY = "my-youtube-list:v1";
+import { createSyncDataFromState, mergeSyncData, pruneHiddenVideoData } from "./sync-data.mjs";
+
+const STORAGE_KEY = "my-youtube-list:v2";
+const LEGACY_STORAGE_KEY = "my-youtube-list:v1";
 const UNCATEGORIZED_ID = "uncategorized";
+const DEFAULT_HIDDEN_VIDEO_RETENTION_DAYS = 3;
 
 const initialState = {
     categories: [],
+    categoryTombstones: [],
     channelCategoryMap: {},
+    channelCategoryUpdatedAt: {},
     hiddenVideoIds: [],
+    hiddenVideos: {},
     channels: [],
     selectedCategoryId: "all",
+    sync: {
+        status: "pending",
+        lastSyncedAt: "",
+        lastError: "",
+        fileId: "",
+    },
 };
 
 let state = loadState();
+const listeners = new Set();
 
 function loadState() {
     try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
         if (!raw) {
-            return { ...initialState };
+            return normalizeState(initialState);
         }
 
-        const parsed = JSON.parse(raw);
-        return {
-            ...initialState,
-            ...parsed,
-            categories: Array.isArray(parsed.categories) ? parsed.categories : [],
-            channelCategoryMap: parsed.channelCategoryMap || {},
-            hiddenVideoIds: Array.isArray(parsed.hiddenVideoIds) ? parsed.hiddenVideoIds : [],
-            channels: Array.isArray(parsed.channels) ? parsed.channels : [],
-        };
+        return normalizeState(JSON.parse(raw));
     } catch {
-        return { ...initialState };
+        return normalizeState(initialState);
     }
 }
 
-function saveState() {
+function normalizeState(rawState) {
+    const now = new Date().toISOString();
+    const parsed = rawState && typeof rawState === "object" ? rawState : {};
+    const hidden = pruneHiddenVideoData(parsed.hiddenVideos, parsed.hiddenVideoIds, {
+        recentDays: DEFAULT_HIDDEN_VIDEO_RETENTION_DAYS,
+    });
+
+    return {
+        ...initialState,
+        ...parsed,
+        categories: Array.isArray(parsed.categories)
+            ? parsed.categories
+                  .map((category) => ({
+                      id: String(category.id),
+                      name: String(category.name || "").trim(),
+                      createdAt: normalizeDate(category.createdAt, now),
+                      updatedAt: normalizeDate(category.updatedAt, now),
+                  }))
+                  .filter((category) => category.id && category.name)
+            : [],
+        categoryTombstones: Array.isArray(parsed.categoryTombstones) ? parsed.categoryTombstones : [],
+        channelCategoryMap: parsed.channelCategoryMap || {},
+        channelCategoryUpdatedAt: parsed.channelCategoryUpdatedAt || {},
+        hiddenVideoIds: hidden.hiddenVideoIds,
+        hiddenVideos: hidden.hiddenVideos,
+        channels: Array.isArray(parsed.channels) ? parsed.channels : [],
+        selectedCategoryId: parsed.selectedCategoryId || "all",
+        sync: {
+            ...initialState.sync,
+            ...(parsed.sync || {}),
+        },
+    };
+}
+
+function saveState({ notifySync = false } = {}) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+
+    if (notifySync) {
+        for (const listener of listeners) {
+            listener(getState());
+        }
+    }
+}
+
+function markPendingChange() {
+    state.sync = {
+        ...state.sync,
+        status: "pending",
+        lastError: "",
+    };
+}
+
+function timestamp() {
+    return new Date().toISOString();
+}
+
+function normalizeDate(value, fallback) {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? new Date(parsed).toISOString() : fallback;
+}
+
+function tombstoneKey(category) {
+    return String(category.normalizedName || category.name || "").trim().toLocaleLowerCase("ko-KR");
 }
 
 export function getState() {
@@ -42,6 +109,41 @@ export function getState() {
 
 export function getUncategorizedId() {
     return UNCATEGORIZED_ID;
+}
+
+export function subscribeToSyncChanges(listener) {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+}
+
+export function getSyncData({ recentDays = DEFAULT_HIDDEN_VIDEO_RETENTION_DAYS } = {}) {
+    return createSyncDataFromState(state, { recentDays });
+}
+
+export function mergeRemoteSyncData(remoteData, { recentDays = DEFAULT_HIDDEN_VIDEO_RETENTION_DAYS } = {}) {
+    state = normalizeState(mergeSyncData(state, remoteData, { recentDays }));
+    saveState();
+    return getState();
+}
+
+export function setSyncStatus(status, { lastError = "", fileId = "" } = {}) {
+    state.sync = {
+        ...state.sync,
+        status,
+        lastError,
+        fileId: fileId || state.sync.fileId,
+        lastSyncedAt: status === "synced" ? timestamp() : state.sync.lastSyncedAt,
+    };
+    saveState();
+    return getState();
+}
+
+export function pruneHiddenVideos(recentDays = DEFAULT_HIDDEN_VIDEO_RETENTION_DAYS) {
+    const hidden = pruneHiddenVideoData(state.hiddenVideos, state.hiddenVideoIds, { recentDays });
+    state.hiddenVideos = hidden.hiddenVideos;
+    state.hiddenVideoIds = hidden.hiddenVideoIds;
+    saveState({ notifySync: true });
+    return getState();
 }
 
 export function addCategory(name) {
@@ -55,20 +157,40 @@ export function addCategory(name) {
         return state;
     }
 
+    const now = timestamp();
     state.categories.push({
         id: crypto.randomUUID(),
         name: trimmedName,
+        createdAt: now,
+        updatedAt: now,
     });
-    saveState();
+    markPendingChange();
+    saveState({ notifySync: true });
     return getState();
 }
 
 export function deleteCategory(categoryId) {
-    state.categories = state.categories.filter((category) => category.id !== categoryId);
+    const category = state.categories.find((item) => item.id === categoryId);
+    if (!category) {
+        return getState();
+    }
+
+    const deletedAt = timestamp();
+    state.categories = state.categories.filter((item) => item.id !== categoryId);
+    state.categoryTombstones = [
+        ...state.categoryTombstones.filter((item) => tombstoneKey(item) !== tombstoneKey(category)),
+        {
+            id: category.id,
+            name: category.name,
+            normalizedName: tombstoneKey(category),
+            deletedAt,
+        },
+    ];
 
     for (const channelId of Object.keys(state.channelCategoryMap)) {
         if (state.channelCategoryMap[channelId] === categoryId) {
             delete state.channelCategoryMap[channelId];
+            state.channelCategoryUpdatedAt[channelId] = deletedAt;
         }
     }
 
@@ -76,7 +198,8 @@ export function deleteCategory(categoryId) {
         state.selectedCategoryId = "all";
     }
 
-    saveState();
+    markPendingChange();
+    saveState({ notifySync: true });
     return getState();
 }
 
@@ -93,7 +216,9 @@ export function assignChannelToCategory(channelId, categoryId) {
         state.channelCategoryMap[channelId] = categoryId;
     }
 
-    saveState();
+    state.channelCategoryUpdatedAt[channelId] = timestamp();
+    markPendingChange();
+    saveState({ notifySync: true });
     return getState();
 }
 
@@ -114,8 +239,11 @@ export function syncChannels(channels) {
 
 export function hideVideo(videoId) {
     if (!state.hiddenVideoIds.includes(videoId)) {
+        const hiddenAt = timestamp();
         state.hiddenVideoIds.push(videoId);
-        saveState();
+        state.hiddenVideos[videoId] = { hiddenAt };
+        markPendingChange();
+        saveState({ notifySync: true });
     }
 
     return getState();
@@ -123,6 +251,8 @@ export function hideVideo(videoId) {
 
 export function unhideAllVideos() {
     state.hiddenVideoIds = [];
-    saveState();
+    state.hiddenVideos = {};
+    markPendingChange();
+    saveState({ notifySync: true });
     return getState();
 }
