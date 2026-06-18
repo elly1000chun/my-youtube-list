@@ -21,6 +21,7 @@ await writeFile(
 
 await copyFile(resolve(projectRoot, "index.html"), resolve(distDir, "index.html"));
 await copyFile(resolve(projectRoot, "styles.css"), resolve(distDir, "styles.css"));
+await copyFile(resolve(projectRoot, "favicon.svg"), resolve(distDir, "favicon.svg"));
 await copyFile(resolve(projectRoot, "version.json"), resolve(distDir, "version.json"));
 await cp(resolve(projectRoot, "src"), resolve(distDir, "src"), { recursive: true });
 await writeConfigFile();
