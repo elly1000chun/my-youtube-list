@@ -1,6 +1,11 @@
 # My YouTube List
-구독 채널의 최신 영상을 먼저 확인하기 위한 최소 스택 웹앱입니다.
-Demo: https://my-youtube-list.elly1000chun.workers.dev
+구독 채널의 최신 영상을 먼저 확인하기 위한 웹앱입니다.
+ - Demo: https://my-youtube-list.elly1000chun.workers.dev
+
+# Project Description
+ - 유튜브는 자체적인 알고리즘에 기반한 추천 영상 리스트를 우선적으로 보여주기 때문에 사용자가 보지 않아도 되는 영상에 너무 많이 노출됩니다.
+ - 사용자는 구독 채널의 영상만 확인할 수 있습니다.
+ - 이 웹앱은 별도 Backend를 두지 않고, 사용자의 작업 내용을 사용자 계정의 Google Drive 애플리케이션 데이터 폴더에 저장합니다.
 
 ## MVP 기능
 - Google OAuth 로그인

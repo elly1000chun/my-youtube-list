@@ -63,13 +63,10 @@
                             <span id="sync-status" class="sync-status" aria-live="polite"></span>
                         </div>
                         <div class="toolbar-controls">
+                            <button id="excluded-videos-button" class="secondary-button" type="button">제외된 영상 0개</button>
                             <label class="toggle-field">
                                 <input id="include-shorts" type="checkbox" checked>
                                 <span>쇼츠 포함</span>
-                            </label>
-                            <label class="search-box">
-                                <span>검색</span>
-                                <input id="video-search" type="search" placeholder="영상 또는 채널명" autocomplete="off">
                             </label>
                         </div>
                     </div>
@@ -90,6 +87,17 @@
                 <button id="close-player" class="icon-button" type="button" aria-label="닫기">x</button>
             </div>
             <div id="player-frame" class="player-frame"></div>
+        </dialog>
+
+        <dialog id="excluded-videos-dialog" class="excluded-videos-dialog">
+            <div class="dialog-header">
+                <strong>제외된 영상</strong>
+                <button id="close-excluded-videos" class="icon-button" type="button" aria-label="닫기">x</button>
+            </div>
+            <div class="excluded-videos-content">
+                <div id="excluded-videos-empty" class="excluded-videos-empty">제외된 영상이 없습니다.</div>
+                <div id="excluded-videos-list" class="excluded-videos-list"></div>
+            </div>
         </dialog>
     </body>
 </html>
