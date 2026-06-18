@@ -1,8 +1,8 @@
 import { clearAccessToken, getAccessToken, hasAccessToken, hasSavedSession, initAuth, isConfigured, requestAccessToken } from "./auth.js";
 import { startSettingsSync, stopSettingsSync } from "./drive-sync.js";
-import { addCategory, assignChannelToCategory, deleteCategory, getState, hideVideo, pruneHiddenVideos, resetUserData, selectCategory, setIncludeShorts, syncChannels } from "./store.js";
+import { addCategory, assignChannelToCategory, deleteCategory, getState, hideVideo, pruneHiddenVideos, resetUserData, selectCategory, setIncludeShorts, syncChannels, unhideVideo } from "./store.js";
 import { fetchRecentVideos, fetchSubscriptions, getRecentDays, isShortsCandidate } from "./youtube-api.js";
-import { closePlayer, openPlayer, renderCategories, renderChannelManager, renderVideos } from "./ui.js";
+import { closePlayer, openPlayer, renderCategories, renderChannelManager, renderExcludedVideos, renderVideos } from "./ui.js";
 
 const elements = {
     loginButton: document.querySelector("#login-button"),
@@ -21,8 +21,8 @@ const elements = {
     channelCount: document.querySelector("#channel-count"),
     uncategorizedCount: document.querySelector("#uncategorized-count"),
     currentFilterTitle: document.querySelector("#current-filter-title"),
+    excludedVideosButton: document.querySelector("#excluded-videos-button"),
     includeShorts: document.querySelector("#include-shorts"),
-    videoSearch: document.querySelector("#video-search"),
     videoList: document.querySelector("#video-list"),
     emptyState: document.querySelector("#empty-state"),
     emptyStateTitle: document.querySelector("#empty-state-title"),
@@ -31,6 +31,10 @@ const elements = {
     playerFrame: document.querySelector("#player-frame"),
     playerTitle: document.querySelector("#player-title"),
     closePlayer: document.querySelector("#close-player"),
+    excludedVideosDialog: document.querySelector("#excluded-videos-dialog"),
+    excludedVideosList: document.querySelector("#excluded-videos-list"),
+    excludedVideosEmpty: document.querySelector("#excluded-videos-empty"),
+    closeExcludedVideos: document.querySelector("#close-excluded-videos"),
 };
 
 let videos = [];
@@ -128,7 +132,6 @@ function bindEvents() {
 
         videos = [];
         hasLoadedVideos = false;
-        elements.videoSearch.value = "";
         resetUserData();
         render();
     });
@@ -138,13 +141,22 @@ function bindEvents() {
         render();
     });
 
-    elements.videoSearch.addEventListener("input", () => {
-        render();
-    });
-
     elements.includeShorts.addEventListener("change", () => {
         setIncludeShorts(elements.includeShorts.checked);
         render();
+    });
+
+    elements.excludedVideosButton.addEventListener("click", () => {
+        renderExcludedVideosDialog();
+        if (elements.excludedVideosDialog.showModal) {
+            elements.excludedVideosDialog.showModal();
+        }
+    });
+
+    elements.closeExcludedVideos.addEventListener("click", () => {
+        if (elements.excludedVideosDialog.open) {
+            elements.excludedVideosDialog.close();
+        }
     });
 
     elements.closePlayer.addEventListener("click", () => {
@@ -198,11 +210,13 @@ function render() {
     const state = getState();
     setSyncStatusText(hasAccessToken() ? state.sync.status : "", state.sync.lastError);
     const filteredVideos = getVisibleVideos(state);
+    const excludedVideos = getExcludedVideos(state);
     const videoCounts = getVideoCounts(state);
     const selectedCategory = getSelectedCategory(state);
     const uncategorizedChannelCount = state.channels.filter((channel) => !state.channelCategoryMap[channel.id]).length;
 
     elements.includeShorts.checked = state.includeShorts;
+    elements.excludedVideosButton.textContent = `제외된 영상 ${excludedVideos.length}개`;
     elements.channelCount.textContent = `${state.channels.length}개 채널`;
     elements.uncategorizedCount.textContent = `미분류 ${uncategorizedChannelCount}개`;
     elements.currentFilterTitle.textContent = selectedCategory.name === "전체" ? "전체 최신 영상" : `${selectedCategory.name} 최신 영상`;
@@ -252,10 +266,13 @@ function render() {
             render();
         },
     });
+
+    if (elements.excludedVideosDialog.open) {
+        renderExcludedVideosDialog();
+    }
 }
 
 function getVisibleVideos(state) {
-    const query = elements.videoSearch.value.trim().toLowerCase();
     const hiddenVideoIds = new Set(state.hiddenVideoIds);
 
     return videos.filter((video) => {
@@ -271,11 +288,34 @@ function getVisibleVideos(state) {
             return false;
         }
 
-        if (!query) {
-            return true;
-        }
+        return true;
+    });
+}
 
-        return `${video.title} ${video.channelTitle}`.toLowerCase().includes(query);
+function getExcludedVideos(state) {
+    const hiddenVideoIds = new Set(state.hiddenVideoIds);
+    return videos.filter((video) => hiddenVideoIds.has(video.id));
+}
+
+function renderExcludedVideosDialog() {
+    const state = getState();
+    const excludedVideos = getExcludedVideos(state);
+
+    renderExcludedVideos({
+        container: elements.excludedVideosList,
+        emptyState: elements.excludedVideosEmpty,
+        videos: excludedVideos,
+        onPlay: (video) =>
+            openPlayer({
+                dialog: elements.playerDialog,
+                frame: elements.playerFrame,
+                titleElement: elements.playerTitle,
+                video,
+            }),
+        onRestore: (videoId) => {
+            unhideVideo(videoId);
+            render();
+        },
     });
 }
 
@@ -313,10 +353,9 @@ function getEmptyStateContent(state, filteredVideos, selectedCategory) {
     }
 
     const hiddenVideoIds = new Set(state.hiddenVideoIds);
-    const query = elements.videoSearch.value.trim();
     const selectedCategoryVideos = videos.filter((video) => isVideoInSelectedCategory(video, state));
     const selectedVisibleBeforeShorts = selectedCategoryVideos.filter((video) => !hiddenVideoIds.has(video.id));
-    const selectedVisibleBeforeSearch = selectedVisibleBeforeShorts.filter((video) => state.includeShorts || !isShortsCandidate(video));
+    const selectedVisibleVideos = selectedVisibleBeforeShorts.filter((video) => state.includeShorts || !isShortsCandidate(video));
     const allVideosAreHidden = videos.length > 0 && videos.every((video) => hiddenVideoIds.has(video.id));
 
     if (allVideosAreHidden) {
@@ -340,17 +379,10 @@ function getEmptyStateContent(state, filteredVideos, selectedCategory) {
         };
     }
 
-    if (selectedVisibleBeforeShorts.length > 0 && selectedVisibleBeforeSearch.length === 0) {
+    if (selectedVisibleBeforeShorts.length > 0 && selectedVisibleVideos.length === 0) {
         return {
             title: "쇼츠 제외 설정으로 표시할 영상이 없습니다.",
             description: "쇼츠 포함을 켜면 짧은 영상을 다시 볼 수 있습니다.",
-        };
-    }
-
-    if (query && selectedVisibleBeforeSearch.length > 0) {
-        return {
-            title: "검색 결과가 없습니다.",
-            description: "다른 영상 제목이나 채널명으로 검색해 보세요.",
         };
     }
 

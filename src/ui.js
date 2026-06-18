@@ -102,68 +102,35 @@ export function renderVideos({ container, emptyState, emptyStateTitle, emptyStat
     emptyStateDescription.classList.toggle("hidden", !emptyStateContent.description);
 
     container.replaceChildren(
-        ...videos.map((video) => {
-            const card = document.createElement("article");
-            card.className = "video-card";
+        ...videos.map((video) =>
+            createVideoCard(video, {
+                onPlay,
+                extraActions: [
+                    {
+                        label: "목록에서 제외",
+                        onClick: () => onHide(video.id),
+                    },
+                ],
+            })
+        )
+    );
+}
 
-            const thumbnailButton = document.createElement("button");
-            thumbnailButton.type = "button";
-            thumbnailButton.className = "thumbnail-button";
-            thumbnailButton.addEventListener("click", () => onPlay(video));
+export function renderExcludedVideos({ container, emptyState, videos, onPlay, onRestore }) {
+    emptyState.classList.toggle("hidden", videos.length > 0);
 
-            const img = document.createElement("img");
-            img.src = video.thumbnail;
-            img.alt = "";
-            img.loading = "lazy";
-
-            const duration = document.createElement("span");
-            duration.className = "duration-badge";
-            duration.textContent = video.durationLabel;
-
-            thumbnailButton.append(img, duration);
-
-            const body = document.createElement("div");
-            body.className = "video-body";
-
-            const title = document.createElement("h3");
-            title.className = "video-title";
-            title.textContent = video.title;
-
-            const meta = document.createElement("div");
-            meta.className = "video-meta";
-            meta.append(
-                textNode(video.channelTitle),
-                textNode(`조회수 ${formatViewCount(video.viewCount)}회`),
-                textNode(formatPublishedAt(video.publishedAt))
-            );
-
-            const actions = document.createElement("div");
-            actions.className = "video-actions";
-
-            const playButton = document.createElement("button");
-            playButton.type = "button";
-            playButton.className = "video-action";
-            playButton.textContent = "재생";
-            playButton.addEventListener("click", () => onPlay(video));
-
-            const openButton = document.createElement("a");
-            openButton.className = "video-action";
-            openButton.href = `https://www.youtube.com/watch?v=${video.id}`;
-            openButton.target = "_blank";
-            openButton.rel = "noreferrer";
-            openButton.textContent = "YouTube에서 열기";
-
-            const hideButton = document.createElement("button");
-            hideButton.type = "button";
-            hideButton.className = "video-action";
-            hideButton.textContent = "목록에서 제외";
-            hideButton.addEventListener("click", () => onHide(video.id));
-
-            actions.append(playButton, openButton, hideButton);
-            body.append(title, meta, actions);
-            card.append(thumbnailButton, body);
-            return card;
-        })
+    container.replaceChildren(
+        ...videos.map((video) =>
+            createVideoCard(video, {
+                onPlay,
+                extraActions: [
+                    {
+                        label: "리스트에 다시 추가",
+                        onClick: () => onRestore(video.id),
+                    },
+                ],
+            })
+        )
     );
 }
 
@@ -194,4 +161,68 @@ function textNode(text) {
     const span = document.createElement("span");
     span.textContent = text;
     return span;
+}
+
+function createVideoCard(video, { onPlay, extraActions = [] }) {
+    const card = document.createElement("article");
+    card.className = "video-card";
+
+    const thumbnailButton = document.createElement("button");
+    thumbnailButton.type = "button";
+    thumbnailButton.className = "thumbnail-button";
+    thumbnailButton.addEventListener("click", () => onPlay(video));
+
+    const img = document.createElement("img");
+    img.src = video.thumbnail;
+    img.alt = "";
+    img.loading = "lazy";
+
+    const duration = document.createElement("span");
+    duration.className = "duration-badge";
+    duration.textContent = video.durationLabel;
+
+    thumbnailButton.append(img, duration);
+
+    const body = document.createElement("div");
+    body.className = "video-body";
+
+    const title = document.createElement("h3");
+    title.className = "video-title";
+    title.textContent = video.title;
+
+    const meta = document.createElement("div");
+    meta.className = "video-meta";
+    meta.append(textNode(video.channelTitle), textNode(`조회수 ${formatViewCount(video.viewCount)}회`), textNode(formatPublishedAt(video.publishedAt)));
+
+    const actions = document.createElement("div");
+    actions.className = "video-actions";
+
+    const playButton = document.createElement("button");
+    playButton.type = "button";
+    playButton.className = "video-action";
+    playButton.textContent = "재생";
+    playButton.addEventListener("click", () => onPlay(video));
+
+    const openButton = document.createElement("a");
+    openButton.className = "video-action";
+    openButton.href = `https://www.youtube.com/watch?v=${video.id}`;
+    openButton.target = "_blank";
+    openButton.rel = "noreferrer";
+    openButton.textContent = "YouTube에서 열기";
+
+    actions.append(
+        playButton,
+        openButton,
+        ...extraActions.map((action) => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "video-action";
+            button.textContent = action.label;
+            button.addEventListener("click", action.onClick);
+            return button;
+        })
+    );
+    body.append(title, meta, actions);
+    card.append(thumbnailButton, body);
+    return card;
 }

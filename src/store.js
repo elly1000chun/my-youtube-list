@@ -281,6 +281,17 @@ export function hideVideo(videoId) {
     return getState();
 }
 
+export function unhideVideo(videoId) {
+    if (state.hiddenVideoIds.includes(videoId)) {
+        state.hiddenVideoIds = state.hiddenVideoIds.filter((id) => id !== videoId);
+        delete state.hiddenVideos[videoId];
+        markPendingChange();
+        saveState({ notifySync: true });
+    }
+
+    return getState();
+}
+
 export function unhideAllVideos() {
     state.hiddenVideoIds = [];
     state.hiddenVideos = {};
