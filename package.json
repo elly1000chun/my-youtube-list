@@ -1,0 +1,14 @@
+{
+  "name": "my-youtube-list",
+  "version": "0.0.5",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-static.mjs",
+    "generate:version": "node scripts/generate-version.mjs",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.0",
+    "@types/node": "^25.9.3"
+  }
+}
