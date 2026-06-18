@@ -151,6 +151,15 @@ h2 {
     margin-top: 14px;
 }
 
+.category-actions {
+    display: flex;
+    margin-top: 14px;
+}
+
+.category-actions button {
+    width: 100%;
+}
+
 .danger-button {
     min-height: 32px;
     border: 1px solid rgba(217, 45, 32, 0.28);
@@ -458,17 +467,6 @@ h2 {
     gap: 8px;
     color: var(--muted);
     font-size: 13px;
-}
-
-.video-description {
-    display: -webkit-box;
-    margin: 0;
-    overflow: hidden;
-    color: #3f4c5a;
-    font-size: 14px;
-    line-height: 1.45;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
 }
 
 .video-actions {

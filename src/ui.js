@@ -95,8 +95,11 @@ export function renderChannelManager({ container, state, onAssign }) {
     );
 }
 
-export function renderVideos({ container, emptyState, videos, onPlay, onHide }) {
+export function renderVideos({ container, emptyState, emptyStateTitle, emptyStateDescription, emptyStateContent, videos, onPlay, onHide }) {
     emptyState.classList.toggle("hidden", videos.length > 0);
+    emptyStateTitle.textContent = emptyStateContent.title;
+    emptyStateDescription.textContent = emptyStateContent.description;
+    emptyStateDescription.classList.toggle("hidden", !emptyStateContent.description);
 
     container.replaceChildren(
         ...videos.map((video) => {
@@ -134,10 +137,6 @@ export function renderVideos({ container, emptyState, videos, onPlay, onHide }) 
                 textNode(formatPublishedAt(video.publishedAt))
             );
 
-            const description = document.createElement("p");
-            description.className = "video-description";
-            description.textContent = video.description || "설명 없음";
-
             const actions = document.createElement("div");
             actions.className = "video-actions";
 
@@ -161,7 +160,7 @@ export function renderVideos({ container, emptyState, videos, onPlay, onHide }) 
             hideButton.addEventListener("click", () => onHide(video.id));
 
             actions.append(playButton, openButton, hideButton);
-            body.append(title, meta, description, actions);
+            body.append(title, meta, actions);
             card.append(thumbnailButton, body);
             return card;
         })

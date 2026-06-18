@@ -14,6 +14,8 @@ const elements = {
     categoryForm: document.querySelector("#category-form"),
     categoryName: document.querySelector("#category-name"),
     categoryList: document.querySelector("#category-list"),
+    channelManagerToggle: document.querySelector("#channel-manager-toggle"),
+    channelPanel: document.querySelector("#channel-panel"),
     resetDataButton: document.querySelector("#reset-data-button"),
     channelManager: document.querySelector("#channel-manager"),
     channelCount: document.querySelector("#channel-count"),
@@ -23,6 +25,8 @@ const elements = {
     videoSearch: document.querySelector("#video-search"),
     videoList: document.querySelector("#video-list"),
     emptyState: document.querySelector("#empty-state"),
+    emptyStateTitle: document.querySelector("#empty-state-title"),
+    emptyStateDescription: document.querySelector("#empty-state-description"),
     playerDialog: document.querySelector("#player-dialog"),
     playerFrame: document.querySelector("#player-frame"),
     playerTitle: document.querySelector("#player-title"),
@@ -31,6 +35,8 @@ const elements = {
 
 let videos = [];
 let isLoading = false;
+let hasLoadedVideos = false;
+let isChannelManagerOpen = false;
 
 window.addEventListener("load", () => {
     init();
@@ -96,6 +102,7 @@ function bindEvents() {
         stopSettingsSync();
         clearAccessToken();
         videos = [];
+        hasLoadedVideos = false;
         setSignedIn(false);
         setSyncStatusText("");
         setStatus("로그아웃했습니다.");
@@ -120,8 +127,14 @@ function bindEvents() {
         }
 
         videos = [];
+        hasLoadedVideos = false;
         elements.videoSearch.value = "";
         resetUserData();
+        render();
+    });
+
+    elements.channelManagerToggle.addEventListener("click", () => {
+        isChannelManagerOpen = !isChannelManagerOpen;
         render();
     });
 
@@ -163,11 +176,13 @@ async function loadDashboard() {
 
         setStatus(`최근 ${getRecentDays()}일 동안 업로드된 영상을 불러오고 있습니다.`);
         videos = await fetchRecentVideos(getAccessToken(), channels);
+        hasLoadedVideos = true;
         setStatus(`${channels.length}개 채널에서 ${videos.length}개 영상을 찾았습니다.`);
     } catch (error) {
         if (/401|unauthorized|invalid credentials/i.test(error.message)) {
             clearAccessToken();
             setSignedIn(false);
+            hasLoadedVideos = false;
             setStatus("인증이 만료되었습니다. 다시 로그인하세요.");
         } else {
             setStatus(error.message);
@@ -191,6 +206,9 @@ function render() {
     elements.channelCount.textContent = `${state.channels.length}개 채널`;
     elements.uncategorizedCount.textContent = `미분류 ${uncategorizedChannelCount}개`;
     elements.currentFilterTitle.textContent = selectedCategory.name === "전체" ? "전체 최신 영상" : `${selectedCategory.name} 최신 영상`;
+    elements.channelPanel.classList.toggle("hidden", !isChannelManagerOpen);
+    elements.channelManagerToggle.textContent = isChannelManagerOpen ? "채널 분류 닫기" : "채널 분류 편집";
+    elements.channelManagerToggle.setAttribute("aria-expanded", String(isChannelManagerOpen));
 
     renderCategories({
         container: elements.categoryList,
@@ -218,6 +236,9 @@ function render() {
     renderVideos({
         container: elements.videoList,
         emptyState: elements.emptyState,
+        emptyStateTitle: elements.emptyStateTitle,
+        emptyStateDescription: elements.emptyStateDescription,
+        emptyStateContent: getEmptyStateContent(state, filteredVideos, selectedCategory),
         videos: filteredVideos,
         onPlay: (video) =>
             openPlayer({
@@ -256,6 +277,87 @@ function getVisibleVideos(state) {
 
         return `${video.title} ${video.channelTitle}`.toLowerCase().includes(query);
     });
+}
+
+function getEmptyStateContent(state, filteredVideos, selectedCategory) {
+    if (filteredVideos.length > 0) {
+        return { title: "", description: "" };
+    }
+
+    if (!hasAccessToken()) {
+        return {
+            title: "아직 불러온 영상이 없습니다.",
+            description: "Google 로그인 후 구독 채널의 최신 업로드를 확인하세요.",
+        };
+    }
+
+    if (isLoading) {
+        return {
+            title: "영상을 불러오는 중입니다.",
+            description: "구독 채널의 최신 업로드를 확인하고 있습니다.",
+        };
+    }
+
+    if (hasLoadedVideos && videos.length === 0) {
+        return {
+            title: "최신 영상이 없습니다.",
+            description: `최근 ${getRecentDays()}일 동안 구독 채널에 새로 올라온 영상이 없습니다.`,
+        };
+    }
+
+    if (!hasLoadedVideos) {
+        return {
+            title: "아직 불러온 영상이 없습니다.",
+            description: "새로고침을 눌러 구독 채널의 최신 업로드를 확인하세요.",
+        };
+    }
+
+    const hiddenVideoIds = new Set(state.hiddenVideoIds);
+    const query = elements.videoSearch.value.trim();
+    const selectedCategoryVideos = videos.filter((video) => isVideoInSelectedCategory(video, state));
+    const selectedVisibleBeforeShorts = selectedCategoryVideos.filter((video) => !hiddenVideoIds.has(video.id));
+    const selectedVisibleBeforeSearch = selectedVisibleBeforeShorts.filter((video) => state.includeShorts || !isShortsCandidate(video));
+    const allVideosAreHidden = videos.length > 0 && videos.every((video) => hiddenVideoIds.has(video.id));
+
+    if (allVideosAreHidden) {
+        return {
+            title: "모든 동영상이 제외되었습니다.",
+            description: "목록에서 제외한 동영상은 사용자 데이터 삭제 전까지 다시 표시되지 않습니다.",
+        };
+    }
+
+    if (selectedCategoryVideos.length === 0 && selectedCategory.id !== "all") {
+        return {
+            title: `${selectedCategory.name} 최신 영상이 없습니다.`,
+            description: "다른 카테고리를 선택하거나 채널 분류를 조정해 보세요.",
+        };
+    }
+
+    if (selectedCategoryVideos.length > 0 && selectedVisibleBeforeShorts.length === 0) {
+        return {
+            title: "선택한 카테고리의 모든 동영상이 제외되었습니다.",
+            description: "다른 카테고리를 선택하거나 전체 최신 영상을 확인해 보세요.",
+        };
+    }
+
+    if (selectedVisibleBeforeShorts.length > 0 && selectedVisibleBeforeSearch.length === 0) {
+        return {
+            title: "쇼츠 제외 설정으로 표시할 영상이 없습니다.",
+            description: "쇼츠 포함을 켜면 짧은 영상을 다시 볼 수 있습니다.",
+        };
+    }
+
+    if (query && selectedVisibleBeforeSearch.length > 0) {
+        return {
+            title: "검색 결과가 없습니다.",
+            description: "다른 영상 제목이나 채널명으로 검색해 보세요.",
+        };
+    }
+
+    return {
+        title: "표시할 영상이 없습니다.",
+        description: "필터 조건을 바꾸거나 새로고침해 보세요.",
+    };
 }
 
 function getVideoCounts(state) {

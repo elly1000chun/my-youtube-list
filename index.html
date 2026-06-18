@@ -38,12 +38,15 @@
                             <button type="submit">추가</button>
                         </form>
                         <div id="category-list" class="category-list"></div>
+                        <div class="category-actions">
+                            <button id="channel-manager-toggle" class="secondary-button" type="button" aria-expanded="false" aria-controls="channel-panel">채널 분류 편집</button>
+                        </div>
                         <div class="data-actions">
                             <button id="reset-data-button" class="danger-button" type="button">모든 사용자 데이터 삭제</button>
                         </div>
                     </section>
 
-                    <section class="panel channel-panel">
+                    <section id="channel-panel" class="panel channel-panel hidden">
                         <div class="panel-header">
                             <h2>채널 분류</h2>
                             <span id="uncategorized-count" class="muted">미분류 0개</span>
@@ -72,8 +75,8 @@
                     </div>
 
                     <div id="empty-state" class="empty-state">
-                        <strong>아직 불러온 영상이 없습니다.</strong>
-                        <span>Google 로그인 후 구독 채널의 최신 업로드를 확인하세요.</span>
+                        <strong id="empty-state-title">아직 불러온 영상이 없습니다.</strong>
+                        <span id="empty-state-description">Google 로그인 후 구독 채널의 최신 업로드를 확인하세요.</span>
                     </div>
 
                     <div id="video-list" class="video-list"></div>
