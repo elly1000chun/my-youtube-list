@@ -3,7 +3,7 @@
  - Demo: https://my-youtube-list.elly1000chun.workers.dev
 <img width="70%" height="70%" alt="스크린샷 2026-06-18 095941" src="https://github.com/user-attachments/assets/0a10a9ea-e145-4256-b7ae-a60c0db3d55e" />
 
-# Project Description
+## Project Description
  - 유튜브는 자체적인 알고리즘에 기반한 추천 영상 리스트를 우선적으로 보여주기 때문에 사용자가 보지 않아도 되는 영상에 너무 많이 노출됩니다.
  - 이 웹앱은 구독 채널의 영상만 확인할 수 있습니다.
  - 이 웹앱은 별도 Backend를 두지 않고, Frontend도 javascript와 html 최소 스택으로 개발되었습니다.
